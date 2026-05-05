@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>家庭菜单管理</title>
+  <style>
+    :root { --bg:#f6f8fb; --card:#fff; --primary:#2f80ed; --ok:#27ae60; --danger:#eb5757; --text:#1f2937; }
+    * { box-sizing: border-box; }
+    body { margin:0; font-family: -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"PingFang SC","Microsoft YaHei",sans-serif; background:var(--bg); color:var(--text); }
+    .wrap { max-width: 920px; margin: 28px auto; padding: 0 14px; }
+    h1 { margin: 0 0 14px; }
+    .card { background:var(--card); border-radius: 12px; padding: 16px; box-shadow: 0 8px 22px rgba(0,0,0,.06); margin-bottom: 14px; }
+    .row { display:flex; gap:10px; flex-wrap:wrap; }
+    input, select, button { padding:10px 12px; border-radius:8px; border:1px solid #d5dbe6; font-size:14px; }
+    input, select { flex:1; min-width:140px; }
+    button { border:none; cursor:pointer; }
+    .btn-add { background:var(--primary); color:#fff; }
+    .btn-plan { background:var(--ok); color:#fff; }
+    .btn-del { background:var(--danger); color:#fff; padding:6px 10px; font-size:12px; }
+    table { width:100%; border-collapse: collapse; margin-top: 10px; }
+    th, td { text-align:left; border-bottom:1px solid #eef1f6; padding:10px 8px; }
+    .tag { display:inline-block; font-size:12px; padding:4px 8px; border-radius:999px; background:#eaf2ff; color:#1f5bbf; }
+    .grid { display:grid; gap:10px; grid-template-columns: repeat(auto-fit,minmax(170px,1fr)); margin-top:8px; }
+    .day { border:1px solid #e7ebf3; border-radius:10px; padding:10px; min-height:100px; }
+    .day h4 { margin:0 0 6px; }
+    .empty { color:#8d97aa; font-size:13px; }
+  </style>
+</head>
+<body>
+  <main class="wrap">
+    <h1>🍽️ 家庭菜单管理</h1>
+
+    <section class="card">
+      <h3>添加菜品</h3>
+      <div class="row">
+        <input id="dishName" placeholder="菜品名（如：番茄炒蛋）" />
+        <select id="dishType">
+          <option value="主菜">主菜</option>
+          <option value="汤">汤</option>
+          <option value="素菜">素菜</option>
+          <option value="主食">主食</option>
+          <option value="甜点">甜点</option>
+        </select>
+        <input id="dishCost" type="number" min="0" step="1" placeholder="预算（元）" />
+        <button class="btn-add" id="addBtn">添加</button>
+      </div>
+
+      <table>
+        <thead>
+          <tr><th>菜品</th><th>分类</th><th>预算</th><th>操作</th></tr>
+        </thead>
+        <tbody id="dishTable"></tbody>
+      </table>
+    </section>
+
+    <section class="card">
+      <div class="row" style="justify-content:space-between;align-items:center;">
+        <h3 style="margin:0">本周菜单（随机生成）</h3>
+        <button class="btn-plan" id="planBtn">生成周计划</button>
+      </div>
+      <div class="grid" id="planGrid"></div>
+    </section>
+  </main>
+
+  <script>
+    const days = ['周一','周二','周三','周四','周五','周六','周日'];
+    let dishes = JSON.parse(localStorage.getItem('family-dishes') || '[]');
+
+    const dishTable = document.getElementById('dishTable');
+    const planGrid = document.getElementById('planGrid');
+
+    function save() {
+      localStorage.setItem('family-dishes', JSON.stringify(dishes));
+    }
+
+    function renderDishes() {
+      dishTable.innerHTML = '';
+      if (!dishes.length) {
+        dishTable.innerHTML = '<tr><td colspan="4" class="empty">暂无菜品，请先添加。</td></tr>';
+        return;
+      }
+      dishes.forEach((d, i) => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${d.name}</td>
+          <td><span class="tag">${d.type}</span></td>
+          <td><input type="number" min="0" step="1" value="${d.cost}" data-cost-i="${i}" style="width:92px;padding:6px 8px;" /></td>
+          <td><button class="btn-save" data-save-i="${i}" style="background:#f2c94c;color:#1f2937;padding:6px 10px;font-size:12px;margin-right:6px;">保存预算</button><button class="btn-del" data-i="${i}">删除</button></td>
+        `;
+        dishTable.appendChild(tr);
+      });
+    }
+
+    function renderPlan(plan = []) {
+      planGrid.innerHTML = '';
+      days.forEach((day, i) => {
+        const card = document.createElement('div');
+        card.className = 'day';
+        card.innerHTML = `<h4>${day}</h4>${plan[i] ? `<div>${plan[i].name}（${plan[i].type}）</div><small>预算：¥${plan[i].cost}</small>` : '<div class="empty">未安排</div>'}`;
+        planGrid.appendChild(card);
+      });
+    }
+
+    function randomPlan() {
+      if (!dishes.length) return [];
+      const copy = [...dishes];
+      const out = [];
+      for (let i = 0; i < 7; i++) {
+        out.push(copy[Math.floor(Math.random() * copy.length)]);
+      }
+      return out;
+    }
+
+    document.getElementById('addBtn').addEventListener('click', () => {
+      const name = document.getElementById('dishName').value.trim();
+      const type = document.getElementById('dishType').value;
+      const cost = Number(document.getElementById('dishCost').value || 0);
+      if (!name) return alert('请输入菜品名');
+      dishes.push({ name, type, cost });
+      save();
+      renderDishes();
+      document.getElementById('dishName').value = '';
+      document.getElementById('dishCost').value = '';
+    });
+
+    dishTable.addEventListener('click', (e) => {
+      const delIdx = e.target.dataset.i;
+      if (delIdx !== undefined) {
+        dishes.splice(Number(delIdx), 1);
+        save();
+        renderDishes();
+        return;
+      }
+
+      const saveIdx = e.target.dataset.saveI;
+      if (saveIdx !== undefined) {
+        const input = dishTable.querySelector(`[data-cost-i="${saveIdx}"]`);
+        const nextCost = Number(input?.value || 0);
+        if (nextCost < 0 || Number.isNaN(nextCost)) {
+          alert('预算必须是大于等于 0 的数字');
+          return;
+        }
+        dishes[Number(saveIdx)].cost = nextCost;
+        save();
+        renderDishes();
+      }
+    });
+
+    document.getElementById('planBtn').addEventListener('click', () => {
+      if (!dishes.length) return alert('请先添加至少一个菜品');
+      renderPlan(randomPlan());
+    });
+
+    renderDishes();
+    renderPlan();
+  </script>
+</body>
+</html>
