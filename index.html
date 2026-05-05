@@ -85,8 +85,8 @@
         tr.innerHTML = `
           <td>${d.name}</td>
           <td><span class="tag">${d.type}</span></td>
-          <td>¥${d.cost}</td>
-          <td><button class="btn-del" data-i="${i}">删除</button></td>
+          <td><input type="number" min="0" step="1" value="${d.cost}" data-cost-i="${i}" style="width:92px;padding:6px 8px;" /></td>
+          <td><button class="btn-save" data-save-i="${i}" style="background:#f2c94c;color:#1f2937;padding:6px 10px;font-size:12px;margin-right:6px;">保存预算</button><button class="btn-del" data-i="${i}">删除</button></td>
         `;
         dishTable.appendChild(tr);
       });
@@ -125,11 +125,26 @@
     });
 
     dishTable.addEventListener('click', (e) => {
-      const idx = e.target.dataset.i;
-      if (idx === undefined) return;
-      dishes.splice(Number(idx), 1);
-      save();
-      renderDishes();
+      const delIdx = e.target.dataset.i;
+      if (delIdx !== undefined) {
+        dishes.splice(Number(delIdx), 1);
+        save();
+        renderDishes();
+        return;
+      }
+
+      const saveIdx = e.target.dataset.saveI;
+      if (saveIdx !== undefined) {
+        const input = dishTable.querySelector(`[data-cost-i="${saveIdx}"]`);
+        const nextCost = Number(input?.value || 0);
+        if (nextCost < 0 || Number.isNaN(nextCost)) {
+          alert('预算必须是大于等于 0 的数字');
+          return;
+        }
+        dishes[Number(saveIdx)].cost = nextCost;
+        save();
+        renderDishes();
+      }
     });
 
     document.getElementById('planBtn').addEventListener('click', () => {
